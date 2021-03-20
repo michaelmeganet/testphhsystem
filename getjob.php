@@ -110,7 +110,7 @@ include "./class/variables.inc.php";
 
 // invoice start from what period
 $period = '2103';
-$sqlinv = "select * from customer_payment_pst_".$period;
+$sqlinv = "select * from customer_payment_pst_".$period." ORDER BY quono, docount";
 $objsql = new SQL($sqlinv);
 echo "\$sqlinv = $sqlinv <br>";
 $result1 = $objsql->getResultRowArray();
@@ -134,7 +134,42 @@ foreach ($result1 as $array){
     echo "<br>^^^^^^^^^^^^^^^^start  of record $totalcount , quono = $quono^^^^^^^^^<br>";
     echo "$totalcount , cid = $cid , bid = $bid, quono = $quono, invoice no = $invcotype.$invno, amount = $invamount <br>";
     echo "start the checking of the table value <br>";
-    
+    ## check the quotation record is correctly insert into quotation tables
+    ## sample SELECT * FROM quotationnew_pst_2103 WHERE quono = 'A&N 2103 002 '
+    ## check field odissue = 'yes' ?
+
+    # $checkquotabResult = isExistQuotable($cid, $bid, $quono,$docount);// is the quotation table exist?
+    # if $checkquotabResult is true response the result is ok,then go to next step
+    # else if $checkquotabResult is false response the result, an dgo to next step
+    ## next step , if $checkquotabResult is true
+    ## $ResultQuotab =  $sqlQueryQuotab($cid, $bid, $quono,$docount).
+    ## check obissue = issued 
+    ## also verify quono_list for the same records
+
+    ## check orderlist record,
+    ## SELECT * FROM orderlistnew_pst_2103 WHERE quono = 'A&N 2103 002' AND docount = 1
+    ## $checkOrdTabResult = isExistOrdtab($cid, $bid, $quono,$docount);
+    ## if $checkOrdTabResult is True
+    ## $ResultOrdTab = $sqlQueryOrdTab($cid, $bid, $quono,$docount);
+    ## noOfRecords = checkNoOfRecOrdTab($cid, $bid, $quono,$docount);
+    ## sumOfAmount = checkSumOrdTab($cid, $bid, $quono,$docount), 
+    ## the sum of amount on  field totalamount in orderlist for
+    ## compare this value with sum of amount the field invamount in the customer_payment_pst_
+    ## same calculation of discount for  sum of  
+    ## all discount in orderlist vs customer_payment_pst_period
+
+    ## check how orderlist record for the filter cid,bid, quono, docount 
+    ## whether the same records (base on qid in orderlist) can be found thier counter 
+    ## part in quotation tables  or not.
+    ## quono_list and quotationnew_pst_period
+
+    ## the same things to cross check if compare the orderlist record vs produciton_scheduling_period
+    ## base on the filter cid, bid, quono, docount, iterate by nopositional
+
+    ## also check the item, noposisiton, (orderlist and production_scheduling_period)
+    ##  and jobno (production_scheduling_period)
+
+
     echo "<br>^^^^^^^^^^^^^^^^end of record $totalcount  , quono =  $quono^^^^^^^^^^<br>";
 
 }
