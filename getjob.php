@@ -1,116 +1,104 @@
 <?php
+include_once "./class/dbh.inc.php";
+include_once "./class/variables.inc.php";
 
-include "./class/dbh.inc.php";
-include "./class/variables.inc.php";
+function checkTableExist($tab) {
+    $qr = "SHOW TABLES LIKE '$tab'";
+    $objSQL = new SQL($qr);
+    $result = $objSQL->getResultOneRowArray();
+    if (!empty($result)) {
+        return true;
+    } else {
+        return false;
+    }
+}
 
-// function updatejobcodesid($jobcode, $period, $sid){
-//     $sql = "UPDATE jobcodesid SET sid = $sid , period = $period "
-//             . "WHERE jobcode = '$jobcode' ";
-//     echo "\$sql = $sql <br>";
-//     $objSQL = new SQL($sql);
-//     $result = $objSQL->getUpdate();
-//     return $result;
-// }
-// function insBySqlOutput2102($sql){
-    
-//      $objSQL = new SQL($sql);
-//      $insResult = $objSQL->InsertData();
-//      return $insResult;
-// //     if ($insResult == 'insert ok!') { //if insert succesful
-// //         
-// //         return $insResult;
-// //     }else{
-// ////         throw new Exception("<font style='color:red'>can't insert.</font>", 102);
-// //         return $insResult;
-// //     }
-    
-// }
-// function IsExistOutput2102($sid) {
+function get_QuonoListRecord($quono, $cid, $bid) {
+    $tab = "quono_list";
+    $qr = "SELECT * FROM $tab WHERE quono = '$quono' AND cid = '$cid' AND bid = '$bid'";
+    $objSQL = new SQL($qr);
+    $result = $objSQL->getResultOneRowArray();
+    return $result;
+}
 
-//     $output2102 = "production_output_2102";
-//     $sqloutput2102 = "select * from $output2102 where sid = '$sid'";
-//     $objoutput = new SQL($sqloutput2102);
-//     $resultoutput = $objoutput->getResultRowArray();
-//     return $resultoutput;
+function get_QuotationRecord($quotab, $quono, $cid, $bid) {
+    $tab = $quotab;
+    $qr = "SELECT * FROM $tab WHERE quono = '$quono' AND cid = '$cid' AND bid = '$bid'";
+    $objSQL = new SQL($qr);
+    $result = $objSQL->getResultRowArray();
+    return $result;
+}
 
+function compareOrderlistWithSchedulingData($period, $quono, $cid, $bid) {
+    echo "<div class='border border-primary'>";
+    echo "====Begin comparing data between Orderlist and Scheduling====<br>";
+    $ordtab = "orderlistnew_pst_$period";
+    $schtab = "production_scheduling_$period";
+    $qrord = "SELECT "
+            . "bid, qid, quono, company, cid, noposition, quantity, grade, mdt, mdw, mdl, fdt, fdw, fdl, process, cncmach, status, aid_cus, source, cuttingtype, runningno, jobno, operation  "
+            . "FROM $ordtab WHERE quono = '$quono' AND cid = '$cid' AND bid = '$bid' ORDER BY noposition ASC";
+    $objSQLord = new SQL($qrord);
+    $qrsch = "SELECT "
+            . "bid, qid, quono, company, cid, noposition, quantity, grade, mdt, mdw, mdl, fdt, fdw, fdl, process, cncmach, status, aid_cus, source, cuttingtype, runningno, jobno, operation  "
+            . "FROM $schtab WHERE quono = '$quono' AND cid = '$cid' AND bid = '$bid' ORDER BY noposition ASC";
+    $objSQLsch = new SQL($qrsch);
+    echo "qrord =$qrord<br>";
+    echo "qrsch =$qrsch<br>";
+    echo "<br><br>";
+    $orddataset = $objSQLord->getResultRowArray();
+    $schdataset = $objSQLsch->getResultRowArray();
+    if (empty($orddataset)) { //Orderlist not found
+        throw new Exception("Cannot find data in $ordtab for quono = '$quono', bid = $bid, cid = $cid");
+    }
+    if (empty($schdataset)) {//Scheduling not found
+        throw new Exception("Cannot find data in $schtab for quono = '$quono', bid = $bid, cid = $cid");
+    }
+    $ordnumrow = count($orddataset);
+    $schnumrow = count($schdataset);
+    if ($ordnumrow != $schnumrow) {//Check if the number of records the same or not
+        throw new Exception("Number of Scheduling is not the same as Orderlist Records!");
+    } else {
+        $numrow = $ordnumrow;
+        $topcount = $numrow - 1; //Maximum records, for loop requirement
+        for ($i = 0; $i <= $topcount; $i++) {
+            echo "Row No.$i<br>";
+            $orddatarow = $orddataset[$i];
+            $schdatarow = $schdataset[$i];
+            $notmatch = 0;
+            echo "<table class=' table-sm table-bordered'>";
+            echo "<tr><th>Column Name</th><th>$ordtab</th><th>$schtab</th>";
+            foreach ($orddatarow as $key => $val) {
+                if ($orddatarow["$key"] != $schdatarow["$key"]) {
+                    $bg = "class='bg-danger'";
+                    $notmatch++;
+                } else {
+                    $bg = "";
+                }
+                echo "<tr $bg>";
+                echo "<th>$key</th>";
+                echo "<td>{$orddatarow["$key"]}</td>";
+                echo "<td>{$orddatarow["$key"]}</td>";
+                echo "</tr>";
+            }
+            echo "</table>";
+            if ($notmatch == 0){
+                echo "All Record matches<br>";
+            }else{
+                throw new Exception("Record not matching in row no.$i");
+            }
+            echo "<br>";
+        }
+    }
 
-// }
-
-// function IsExistOutput2103($sid) {
-
-//     $output2103 = "production_output_2103";
-//     $sqloutput2103 = "select * from $output2103 where sid = '$sid'";
-//     echo "in function IsExistOutput2103 the sid is $sid <br>";
-//     echo "\$sqloutput2103 = $sqloutput2103 <br>";
-//     $objoutput = new SQL($sqloutput2103);
-//     $resultoutput = $objoutput->getResultRowArray();
-//     echo "<br> in IsExistOutput2103, var_dump resultoutput<br> ";
-//     var_dump($resultoutput);
-//     echo "<br>";
-//     return $resultoutput;
-
-
-// }
-
-// function insertToOutput2102($Insert_Array){
-    
-//             echo "<br> c<br>";
-//             var_dump($Insert_Array);
-//             echo "<br>";
-
-//             $qrins = "INSERT INTO $prodtab SET ";
-//             $qrins_debug = "INSERT INTO $prodtab SET ";
-//             $arrCnt = count($Insert_Array);
-//             $cnt = 0;
-//             foreach ($Insert_Array as $key => $val) {
-//             $cnt++;
-//             $qrins .= " $key =:$key ";
-//             $qrins_debug .= " $key = '$val' ";
-//             if ($cnt != $arrCnt) {
-//             $qrins .= " , ";
-//             $qrins_debug .= " , ";
-//             }
-//             }
-
-//             echo "<br><br>\$qrins = $qrins <br><br>";
-//             echo "<br><br>\$qrins_debug= $$qrins_debug <br><br>";
-//             echo "<br>$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$<br>";
-            
-//             $objSQLlog = new SQLBINDPARAM($qrins, $Insert_Array);
-//             $insResult = $objSQLlog->InsertData2();
-//             echo "===DEBUG LOG QR = $qrins_debug <br>";
-//             echo "+++===LOG RESULT = $insResult<br>";
-//             return $insResult;
-// }
-
-// function deloutput2103($sid2){
-//     $output2103 = "production_output_2103";
-//     $sql = "DELETE FROM $output2103 WHERE sid = $sid2 ";
-//     echo "\$sql = $sql <br>";
-//     $objSql = new SQL($sql);
-//     $result = $objSql->getDelete();
-//     return $result;
-// }
-
-// function delSche2103($sid2){
-//     $pro2103 = "production_scheduling_2103";
-//     $sql = "DELETE FROM $pro2103 WHERE sid = $sid2 ";
-//     echo "\$sql = $sql <br>";
-//     $objSql = new SQL($sql);
-//     $result = $objSql->getDelete();
-//     return $result;
-    
-// }
-// $pro2102 = "production_scheduling_2102";
-// $pro2103 = "production_scheduling_2103";
-// $output2102 = "production_output_2102";
-// $output2103 = "production_output_2103";
-// $sql2102 = "select * from $pro2102 where operation = 1 or  operation = 3 order by quono ";
-// $sql2103 = "select * from $pro2103 where operation = 1 or  operation = 3  order by quon";
+    echo "====End comparing data between Orderlist and Scheduling====<br>";
+    echo "</div>";
+}
 
 // invoice start from what period
 $period = '2103';
-$sqlinv = "select * from customer_payment_pst_".$period." ORDER BY quono, docount";
+$cuspaytab = "customer_payment_pst_$period";
+$ordtab = "orderlistnew_pst_$period";
+$sqlinv = "select * from $cuspaytab ORDER BY quono, docount";
 $objsql = new SQL($sqlinv);
 echo "\$sqlinv = $sqlinv <br>";
 $result1 = $objsql->getResultRowArray();
@@ -119,7 +107,7 @@ $result1 = $objsql->getResultRowArray();
 $totalcount = 0;
 $delcount = 0;
 $jcudpatecount = 0;
-foreach ($result1 as $array){
+foreach ($result1 as $array) {
     $totalcount++;
 //    print_r($array);
     $cid = $array['cid'];
@@ -130,47 +118,101 @@ foreach ($result1 as $array){
     $invno = $array['invno'];
     $invdate = $array['invdate'];
     $invamount = $array['invamount'];
-
-    echo "<br>^^^^^^^^^^^^^^^^start  of record $totalcount , quono = $quono^^^^^^^^^<br>";
-    echo "$totalcount , cid = $cid , bid = $bid, quono = $quono, invoice no = $invcotype.$invno, amount = $invamount <br>";
+    echo "<div class='container border border-success'>";
+    echo "<p class='bg-primary'>start  of record $totalcount , quono = $quono</p>";
+    echo "$totalcount , cid = $cid , bid = $bid, quono = $quono, invoice no = " . $invcotype . $invno . ", amount = $invamount <br>";
     echo "start the checking of the table value <br>";
     ## check the quotation record is correctly insert into quotation tables
     ## sample SELECT * FROM quotationnew_pst_2103 WHERE quono = 'A&N 2103 002 '
     ## check field odissue = 'yes' ?
-
-    # $checkquotabResult = isExistQuotable($cid, $bid, $quono,$docount);// is the quotation table exist?
-    # if $checkquotabResult is true response the result is ok,then go to next step
-    # else if $checkquotabResult is false response the result, an dgo to next step
-    ## next step , if $checkquotabResult is true
-    ## $ResultQuotab =  $sqlQueryQuotab($cid, $bid, $quono,$docount).
-    ## check obissue = issued 
-    ## also verify quono_list for the same records
-
-    ## check orderlist record,
-    ## SELECT * FROM orderlistnew_pst_2103 WHERE quono = 'A&N 2103 002' AND docount = 1
-    ## $checkOrdTabResult = isExistOrdtab($cid, $bid, $quono,$docount);
-    ## if $checkOrdTabResult is True
-    ## $ResultOrdTab = $sqlQueryOrdTab($cid, $bid, $quono,$docount);
-    ## noOfRecords = checkNoOfRecOrdTab($cid, $bid, $quono,$docount);
-    ## sumOfAmount = checkSumOrdTab($cid, $bid, $quono,$docount), 
-    ## the sum of amount on  field totalamount in orderlist for
-    ## compare this value with sum of amount the field invamount in the customer_payment_pst_
-    ## same calculation of discount for  sum of  
-    ## all discount in orderlist vs customer_payment_pst_period
-
-    ## check how orderlist record for the filter cid,bid, quono, docount 
-    ## whether the same records (base on qid in orderlist) can be found thier counter 
-    ## part in quotation tables  or not.
-    ## quono_list and quotationnew_pst_period
-
-    ## the same things to cross check if compare the orderlist record vs produciton_scheduling_period
-    ## base on the filter cid, bid, quono, docount, iterate by nopositional
-
-    ## also check the item, noposisiton, (orderlist and production_scheduling_period)
-    ##  and jobno (production_scheduling_period)
-
-
-    echo "<br>^^^^^^^^^^^^^^^^end of record $totalcount  , quono =  $quono^^^^^^^^^^<br>";
-
+//    Check record in quono list first 
+    try {
+        $ql_dataset = get_QuonoListRecord($quono, $cid, $bid);
+        if (empty($ql_dataset)) {
+            Throw new Exception("Cannot find any record in quono_list");
+        }
+        $quotab = $ql_dataset['quotab'];
+        //check table exist or not
+        if (!checkTableExist($quotab)) {
+            throw new Exception("$quotab has not yet been generated");
+        }
+        $quoperiod = $ql_dataset['period'];
+        $quodataset = get_QuotationRecord($quotab, $quono, $cid, $bid);
+        if (empty($quodataset)) {
+            Throw new Exception("Cannot find any record in $quotab");
+        }
+        $quodtnumrow = count($quodataset);
+        echo "Detected $quodtnumrow items in Quono [$quono]<br>";
+        $odissuecnt = 0;
+        ?>
+        <div>
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <tr>
+                        <?php
+                        foreach ($quodataset[0] as $index => $val) {
+                            echo "<th>$index</th>";
+                        }
+                        ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    foreach ($quodataset as $datarow) {
+                        echo "<tr>";
+                        foreach ($datarow as $index => $val) {
+                            echo "<th>$val</th>";
+                            if ($index == 'odissue') {
+                                if ($val == 'yes') {
+                                    $odissuecnt++;
+                                }
+                            }
+                        }
+                        echo "</tr>";
+                    }
+                    ?>
+                </tbody>
+            </table>
+        </div>
+        <?php
+        if ($odissuecnt == 0) {
+            unset($odissuecnt);
+            throw new Exception('Quotation has not yet been Issued!');
+        }
+        echo "$odissuecnt of $quodtnumrow items has been issued into orderlist<br>";
+        unset($odissuecnt);
+        # $checkquotabResult = isExistQuotable($cid, $bid, $quono,$docount);// is the quotation table exist?
+        # if $checkquotabResult is true response the result is ok,then go to next step
+        # else if $checkquotabResult is false response the result, an dgo to next step
+        ## next step , if $checkquotabResult is true
+        ## $ResultQuotab =  $sqlQueryQuotab($cid, $bid, $quono,$docount).
+        ## check obissue = issued 
+        ## also verify quono_list for the same records
+        ## check orderlist record,
+        ## SELECT * FROM orderlistnew_pst_2103 WHERE quono = 'A&N 2103 002' AND docount = 1
+        ## $checkOrdTabResult = isExistOrdtab($cid, $bid, $quono,$docount);
+        ## if $checkOrdTabResult is True
+        //check orderlist record
+        $resultCheckOrdSch = compareOrderlistWithSchedulingData($period, $quono, $cid, $bid);
+        ## $ResultOrdTab = $sqlQueryOrdTab($cid, $bid, $quono,$docount);
+        ## noOfRecords = checkNoOfRecOrdTab($cid, $bid, $quono,$docount);
+        ## sumOfAmount = checkSumOrdTab($cid, $bid, $quono,$docount), 
+        ## the sum of amount on  field totalamount in orderlist for
+        ## compare this value with sum of amount the field invamount in the customer_payment_pst_
+        ## same calculation of discount for  sum of  
+        ## all discount in orderlist vs customer_payment_pst_period
+        ## check how orderlist record for the filter cid,bid, quono, docount 
+        ## whether the same records (base on qid in orderlist) can be found thier counter 
+        ## part in quotation tables  or not.
+        ## quono_list and quotationnew_pst_period
+        ## the same things to cross check if compare the orderlist record vs produciton_scheduling_period
+        ## base on the filter cid, bid, quono, docount, iterate by nopositional
+        ## also check the item, noposisiton, (orderlist and production_scheduling_period)
+        ##  and jobno (production_scheduling_period)
+    } catch (Exception $e) {
+        echo "<p class='bg-danger'>" . $e->getMessage() . "<br></p>";
+    }
+    echo "<h6 class='bg-primary'>end  of record $totalcount , quono = $quono</h6>";
+    echo "</div><br><br>";
 }
 

@@ -14,7 +14,7 @@
 
             <div class="page-header" id="banner">
                 <div class="row">
-                    <div class="col-lg-8 col-md-7 col-sm-6">
+                    <div class="col-lg-12 col-md-9 col-sm-8">
                         <h1>CHECK DOUBLE JOBLIST RECORDS IN 2102 AND 2103</h1>
                         <br>
                         <br>
