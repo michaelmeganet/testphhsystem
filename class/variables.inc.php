@@ -123,8 +123,8 @@ Class SQL extends Dbh {
             //echo "=========================<br>";
         } else {
             // do nothing;
-            echo "no result on getResultRowArray";
-            $resultset = "no result on getResultRowArray";
+            #echo "no result on getResultRowArray";
+            $resultset = array();
         }
 
         return $resultset;
