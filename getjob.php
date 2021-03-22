@@ -182,6 +182,74 @@ function compareOrderlistWithQuotation($period, $quoperiod, $quono, $cid, $bid, 
     return $result;
 }
 
+function compareOrderlistWithCustomerPayment($period, $quono, $cid, $bid, $docount, $invcotype, $invno) {
+    echo "<div class='border border-light'>";
+    echo "====Begin comparing data between Orderlist and Customer Payment====<br>";
+    $ordtab = "orderlistnew_pst_$period";
+    $cusptab = "customer_payment_pst_$period";
+    try {
+        $qrord = "SELECT * FROM $ordtab WHERE quono = '$quono' AND cid = $cid AND bid = $bid AND docount = $docount";
+        $objSQLord = new SQL($qrord);
+        $orddataset = $objSQLord->getResultRowArray();
+        echo "\$qrord = $qrord<br>";
+        if (empty($orddataset)) {
+            throw new Exception("There's no record in $ordtab for $quono [cid = $cid;bid = $bid;docount = $docount]");
+        }
+        echo "===Calculating Total Amount in Orderlist<br>";
+        $ordamount = 0;
+        $orddiscount = 0;
+        $ordgst = 0;
+        $ordtotamount = 0;
+        foreach ($orddataset as $orddatarow) {
+            $amount = (float) $orddatarow['amountmat'] + (float) $orddatarow['amountpmach'] + (float) $orddatarow['amountcncmach'] + (float) $orddatarow['amountother'];
+            $discount = (float) $orddatarow['discountmat'] + (float) $orddatarow['discountpmach'] + (float) $orddatarow['discountcncmach'] + (float) $orddatarow['discountother'];
+            $gst = (float) $orddatarow['gstmat'] + (float) $orddatarow['gstpmach'] + (float) $orddatarow['gstcncmach'] + (float) $orddatarow['gstother'];
+            $totamount = $amount - $discount + $gst;
+            $ordamount += $amount;
+            $orddiscount += $discount;
+            $ordgst += $gst;
+            $ordtotamount += $totamount;
+            unset($amount);
+            unset($discount);
+            unset($gst);
+            unset($totamount);
+        }
+        echo "<div class='container bg-primary'>";
+        echo "Total : " . number_format($ordamount, 2) . "<br>";
+        echo "Discount : " . number_format($orddiscount, 2) . " <br>";
+        echo "GST : " . number_format($ordgst, 2) . " <br>";
+        echo "Grand Total: " . number_format(($ordtotamount), 2) . "<br>";
+        echo "</div>";
+        echo" ==get the InvAmount from $cusptab table<br>";
+        $qrcusp = "SELECT * FROM $cusptab WHERE invcotype = '$invcotype' AND invno = '$invno' AND cid = $cid AND quono = '$quono' AND docount = '$docount'";
+        $objSQLcusp = new SQL($qrcusp);
+        $cuspdatarow = $objSQLcusp->getResultOneRowArray();
+        if (empty($cuspdatarow)) {
+            throw new Exception("There's no payment data in $cusptab for $quono [cid = $cid;invoicerunno = " . $invcotype . $invno . ";docount = $docount");
+        }
+        $invamount = (float) $cuspdatarow['invamount'];
+        $invgst = (float) $cuspdatarow['gst'];
+        $invtotamount = $invamount + $invgst;
+        echo "<div class='container bg-secondary'>";
+        echo "Total : " . number_format($invamount, 2) . "<br>";
+        echo "GST : " . number_format($invgst, 2) . " <br>";
+        echo "Grand Total: " . number_format(($invtotamount), 2) . "<br>";
+        echo "</div>";
+        if ($invtotamount != $ordtotamount) {
+            echo "<p class='bg-danger'>TOTAL AMOUNT IN $ordtab v $cusptab DOESN'T MATCH</p><br>";
+        } else {
+            echo "<p class='bg-success'>TOTAL AMOUNT IN $ordtab v $cusptab MATCHES</p><br>";
+        }
+        $result = 'ok';
+    } catch (Exception $e) {
+        echo $e->getMessage() . "<br>";
+        $result = 'fail';
+    }
+    echo "====End comparing data between Orderlist and Customer Payment ====<br>";
+    echo "</div>";
+    return $result;
+}
+
 // invoice start from what period
 $period = '2103';
 $cuspaytab = "customer_payment_pst_$period";
@@ -279,6 +347,12 @@ foreach ($result1 as $array) {
         $chckOrdvQuo = compareOrderlistWithQuotation($period, $quoperiod, $quono, $cid, $bid, $docount);
         if ($chckOrdvQuo == 'fail') {
             throw new Exception('Cannot continue Comparing Orderlist and Quotation, Skipping this data.');
+        }
+
+        //Comparing Orderlist VS Customer_Payment
+        $chckOrdvCusPay = compareOrderlistWithCustomerPayment($period, $quono, $cid, $bid, $docount, $invcotype, $invno);
+        if ($chckOrdvCusPay == 'fail') {
+            throw new Exception('Cannot continue Comparing Orderlist and Customer Payment, Skipping this data.');
         }
         # $checkquotabResult = isExistQuotable($cid, $bid, $quono,$docount);// is the quotation table exist?
         # if $checkquotabResult is true response the result is ok,then go to next step
