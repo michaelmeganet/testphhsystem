@@ -34,12 +34,13 @@ function compareOrderlistWithSchedulingData($period, $quono, $cid, $bid) {
     echo "====Begin comparing data between Orderlist and Scheduling====<br>";
     $ordtab = "orderlistnew_pst_$period";
     $schtab = "production_scheduling_$period";
-    $qrord = "SELECT "
-            . "bid, qid, quono, company, cid, noposition, quantity, grade, mdt, mdw, mdl, fdt, fdw, fdl, process, cncmach, status, aid_cus, source, cuttingtype, runningno, jobno, operation  "
+    $comparisonColumn = "bid, qid, quono, company, cid, noposition, quantity, "
+            . "grade, mdt, mdw, mdl, fdt, fdw, fdl, process, cncmach, "
+            . "status, aid_cus, source, cuttingtype, runningno, jobno, operation";
+    $qrord = "SELECT $comparisonColumn "
             . "FROM $ordtab WHERE quono = '$quono' AND cid = '$cid' AND bid = '$bid' ORDER BY noposition ASC";
     $objSQLord = new SQL($qrord);
-    $qrsch = "SELECT "
-            . "bid, qid, quono, company, cid, noposition, quantity, grade, mdt, mdw, mdl, fdt, fdw, fdl, process, cncmach, status, aid_cus, source, cuttingtype, runningno, jobno, operation  "
+    $qrsch = "SELECT $comparisonColumn "
             . "FROM $schtab WHERE quono = '$quono' AND cid = '$cid' AND bid = '$bid' ORDER BY noposition ASC";
     $objSQLsch = new SQL($qrsch);
     echo "qrord =$qrord<br>";
@@ -232,10 +233,10 @@ function compareOrderlistWithCustomerPayment($period, $quono, $cid, $bid, $docou
         $invtotamount = $invamount + $invgst;
         echo "<div class='container bg-secondary'>";
         echo "Total : " . number_format($invamount, 2) . "<br>";
-        echo "GST : " . number_format($invgst, 2) . " <br>";
+        echo "GST : " . number_format($invgst, 2) . "<br>";
         echo "Grand Total: " . number_format(($invtotamount), 2) . "<br>";
         echo "</div>";
-        if ($invtotamount != $ordtotamount) {
+        if (number_format($invtotamount,2) != number_format($ordtotamount,2)) {
             echo "<p class='bg-danger'>TOTAL AMOUNT IN $ordtab v $cusptab DOESN'T MATCH</p><br>";
         } else {
             echo "<p class='bg-success'>TOTAL AMOUNT IN $ordtab v $cusptab MATCHES</p><br>";
@@ -366,7 +367,7 @@ foreach ($result1 as $array) {
         ## $checkOrdTabResult = isExistOrdtab($cid, $bid, $quono,$docount);
         ## if $checkOrdTabResult is True
         //check orderlist record
-        #$resultCheckOrdSch = compareOrderlistWithSchedulingData($period, $quono, $cid, $bid);
+        $resultCheckOrdSch = compareOrderlistWithSchedulingData($period, $quono, $cid, $bid);
         ## $ResultOrdTab = $sqlQueryOrdTab($cid, $bid, $quono,$docount);
         ## noOfRecords = checkNoOfRecOrdTab($cid, $bid, $quono,$docount);
         ## sumOfAmount = checkSumOrdTab($cid, $bid, $quono,$docount), 
