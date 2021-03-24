@@ -34,12 +34,13 @@ function compareOrderlistWithSchedulingData($period, $quono, $cid, $bid) {
     echo "====Begin comparing data between Orderlist and Scheduling====<br>";
     $ordtab = "orderlistnew_pst_$period";
     $schtab = "production_scheduling_$period";
-    $qrord = "SELECT "
-            . "bid, qid, quono, company, cid, noposition, quantity, grade, mdt, mdw, mdl, fdt, fdw, fdl, process, cncmach, status, aid_cus, source, cuttingtype, runningno, jobno, operation  "
+    $comparisonColumn = "bid, qid, quono, company, cid, noposition, quantity, "
+            . "grade, mdt, mdw, mdl, fdt, fdw, fdl, process, cncmach, "
+            . "status, aid_cus, source, cuttingtype, runningno, jobno, operation";
+    $qrord = "SELECT $comparisonColumn "
             . "FROM $ordtab WHERE quono = '$quono' AND cid = '$cid' AND bid = '$bid' ORDER BY noposition ASC";
     $objSQLord = new SQL($qrord);
-    $qrsch = "SELECT "
-            . "bid, qid, quono, company, cid, noposition, quantity, grade, mdt, mdw, mdl, fdt, fdw, fdl, process, cncmach, status, aid_cus, source, cuttingtype, runningno, jobno, operation  "
+    $qrsch = "SELECT $comparisonColumn "
             . "FROM $schtab WHERE quono = '$quono' AND cid = '$cid' AND bid = '$bid' ORDER BY noposition ASC";
     $objSQLsch = new SQL($qrsch);
     echo "qrord =$qrord<br>";
@@ -81,9 +82,9 @@ function compareOrderlistWithSchedulingData($period, $quono, $cid, $bid) {
                 echo "</tr>";
             }
             echo "</table>";
-            if ($notmatch == 0){
+            if ($notmatch == 0) {
                 echo "All Record matches<br>";
-            }else{
+            } else {
                 throw new Exception("Record not matching in row no.$i");
             }
             echo "<br>";
@@ -92,6 +93,162 @@ function compareOrderlistWithSchedulingData($period, $quono, $cid, $bid) {
 
     echo "====End comparing data between Orderlist and Scheduling====<br>";
     echo "</div>";
+}
+
+function compareOrderlistWithQuotation($period, $quoperiod, $quono, $cid, $bid, $docount) {
+    echo "<div class='border border-warning'>";
+    echo "====Begin comparing data between Orderlist and Quotation====<br>";
+    $ordtab = "orderlistnew_pst_$period";
+    $quotab = "quotationnew_pst_$quoperiod";
+    //fetch orderlist record first
+    $comparationcolumn = "qid,bid,quono,Shape_Code,Category,tabletype,specialShapeOrder,company,cusstatus,cid,item,quantity,grade,
+                            mdt,mdw,mdl,dim_desp,fdt,fdw,fdl,finishing_dim_desp,process,mat,pmach,cncmach,other,ftz,amountmat,discountmat,
+                            gstmat,totalamountmat,amountpmach,discountpmach,gstpmach,totalamountpmach,amountcncmach,discountcncmach,gstcncmach,
+                            totalamountcncmach,amountother,discountother,gstother,totalamountother,totalamount ";
+    try {
+        $qrord = "SELECT $comparationcolumn
+                     FROM $ordtab WHERE quono = '$quono' AND cid = $cid AND bid = $bid AND docount = $docount";
+        $objSQLord = new SQL($qrord);
+        $orddataset = $objSQLord->getResultRowArray();
+        echo "\$qrord = $qrord<br>";
+        if (empty($orddataset)) {
+            throw new Exception("There's no record in $ordtab for $quono [cid = $cid;bid = $bid;docount = $docount]");
+        }
+        echo "==Begin loop on each records<br>";
+        $errcnt = 0;
+        foreach ($orddataset as $orddatarow) {
+            $qid = $orddatarow['qid'];
+            echo "===Get Equivalent record in $quotab (qid = $qid)<br>";
+            $notmatchArr = array();
+            $qrquo = "SELECT $comparationcolumn FROM $quotab WHERE quono = '$quono' AND cid = $cid AND bid = $bid AND qid = $qid ";
+            $objSQLquo = new SQL($qrquo);
+            $quodatarow = $objSQLquo->getResultOneRowArray();
+            if (empty($quodatarow)) {
+                echo "<font class='bg-danger'>Cannot find record of qid = $qid in $quotab</font><br>";
+                $errcnt ++;
+            } else {
+                echo "<table class='table table-sm table-responsive'>";
+                echo "<tr>"
+                . "<th>Table Name</th>";
+                foreach ($orddatarow as $index => $val) {
+                    echo "<th>$index</th>";
+                }
+                echo "</tr>";
+                echo "<tr>";
+                echo "<td>$ordtab</td>";
+                foreach ($orddatarow as $index => $val) {
+                    if ($quodatarow[$index] != $orddatarow[$index]) {
+                        $bg = 'class="bg-danger"';
+                    } else {
+                        $bg = 'class="bg-info"';
+                    }
+                    echo "<td $bg>$val</td>";
+                }
+                echo "</tr>";
+                echo "<tr>";
+                echo "<td>$quotab</td>";
+                foreach ($quodatarow as $index => $val) {
+                    if ($quodatarow[$index] != $orddatarow[$index]) {
+                        $bg = 'class="bg-danger"';
+                        $notmatchArr[] = $index;
+                    } else {
+                        $bg = 'class="bg-info"';
+                    }
+                    echo "<td $bg>$val</td>";
+                }
+                echo "</tr>";
+                echo "</table>";
+            }
+            echo "<b>";
+            if ($errcnt > 0) {
+                echo "ITEM CANNOT BE FIND IN THE QUOTATION.<br>";
+            } elseif (!empty($notmatchArr)) {
+                foreach ($notmatchArr as $val) {
+                    echo "$val is not the same, [ $quotab = $quodatarow[$val] | $ordtab = $orddatarow[$val] ]<br>";
+                }
+            } else {
+                echo "ALL RECORD MATCHES<br>";
+            }
+            echo "</b>";
+            echo "===End Get Equivalent record in $quotab (qid = $qid)<br>";
+        }
+        $result = 'ok';
+    } catch (Exception $e) {
+        echo $e->getMessage() . "<br>";
+        $result = 'fail';
+    }
+
+    echo "</div>";
+    echo "====End comparing data between Orderlist and Quotation====<br>";
+    return $result;
+}
+
+function compareOrderlistWithCustomerPayment($period, $quono, $cid, $bid, $docount, $invcotype, $invno) {
+    echo "<div class='border border-light'>";
+    echo "====Begin comparing data between Orderlist and Customer Payment====<br>";
+    $ordtab = "orderlistnew_pst_$period";
+    $cusptab = "customer_payment_pst_$period";
+    try {
+        $qrord = "SELECT * FROM $ordtab WHERE quono = '$quono' AND cid = $cid AND bid = $bid AND docount = $docount";
+        $objSQLord = new SQL($qrord);
+        $orddataset = $objSQLord->getResultRowArray();
+        echo "\$qrord = $qrord<br>";
+        if (empty($orddataset)) {
+            throw new Exception("There's no record in $ordtab for $quono [cid = $cid;bid = $bid;docount = $docount]");
+        }
+        echo "===Calculating Total Amount in Orderlist<br>";
+        $ordamount = 0;
+        $orddiscount = 0;
+        $ordgst = 0;
+        $ordtotamount = 0;
+        foreach ($orddataset as $orddatarow) {
+            $amount = (float) $orddatarow['amountmat'] + (float) $orddatarow['amountpmach'] + (float) $orddatarow['amountcncmach'] + (float) $orddatarow['amountother'];
+            $discount = (float) $orddatarow['discountmat'] + (float) $orddatarow['discountpmach'] + (float) $orddatarow['discountcncmach'] + (float) $orddatarow['discountother'];
+            $gst = (float) $orddatarow['gstmat'] + (float) $orddatarow['gstpmach'] + (float) $orddatarow['gstcncmach'] + (float) $orddatarow['gstother'];
+            $totamount = $amount - $discount + $gst;
+            $ordamount += $amount;
+            $orddiscount += $discount;
+            $ordgst += $gst;
+            $ordtotamount += $totamount;
+            unset($amount);
+            unset($discount);
+            unset($gst);
+            unset($totamount);
+        }
+        echo "<div class='container bg-primary'>";
+        echo "Total : " . number_format($ordamount, 2) . "<br>";
+        echo "Discount : " . number_format($orddiscount, 2) . " <br>";
+        echo "GST : " . number_format($ordgst, 2) . " <br>";
+        echo "Grand Total: " . number_format(($ordtotamount), 2) . "<br>";
+        echo "</div>";
+        echo" ==get the InvAmount from $cusptab table<br>";
+        $qrcusp = "SELECT * FROM $cusptab WHERE invcotype = '$invcotype' AND invno = '$invno' AND cid = $cid AND quono = '$quono' AND docount = '$docount'";
+        $objSQLcusp = new SQL($qrcusp);
+        $cuspdatarow = $objSQLcusp->getResultOneRowArray();
+        if (empty($cuspdatarow)) {
+            throw new Exception("There's no payment data in $cusptab for $quono [cid = $cid;invoicerunno = " . $invcotype . $invno . ";docount = $docount");
+        }
+        $invamount = (float) $cuspdatarow['invamount'];
+        $invgst = (float) $cuspdatarow['gst'];
+        $invtotamount = $invamount + $invgst;
+        echo "<div class='container bg-secondary'>";
+        echo "Total : " . number_format($invamount, 2) . "<br>";
+        echo "GST : " . number_format($invgst, 2) . "<br>";
+        echo "Grand Total: " . number_format(($invtotamount), 2) . "<br>";
+        echo "</div>";
+        if (number_format($invtotamount,2) != number_format($ordtotamount,2)) {
+            echo "<p class='bg-danger'>TOTAL AMOUNT IN $ordtab v $cusptab DOESN'T MATCH</p><br>";
+        } else {
+            echo "<p class='bg-success'>TOTAL AMOUNT IN $ordtab v $cusptab MATCHES</p><br>";
+        }
+        $result = 'ok';
+    } catch (Exception $e) {
+        echo $e->getMessage() . "<br>";
+        $result = 'fail';
+    }
+    echo "====End comparing data between Orderlist and Customer Payment ====<br>";
+    echo "</div>";
+    return $result;
 }
 
 // invoice start from what period
@@ -159,7 +316,12 @@ foreach ($result1 as $array) {
                 <tbody>
                     <?php
                     foreach ($quodataset as $datarow) {
-                        echo "<tr>";
+                        if ($datarow['odissue'] != 'yes') {
+                            $bg_q = 'class="bg-danger"';
+                        } else {
+                            $bg_q = 'class="bg-primary"';
+                        }
+                        echo "<tr $bg_q>";
                         foreach ($datarow as $index => $val) {
                             echo "<th>$val</th>";
                             if ($index == 'odissue') {
@@ -181,6 +343,18 @@ foreach ($result1 as $array) {
         }
         echo "$odissuecnt of $quodtnumrow items has been issued into orderlist<br>";
         unset($odissuecnt);
+
+        //Comparing Orderlist record with QUotation Record
+        $chckOrdvQuo = compareOrderlistWithQuotation($period, $quoperiod, $quono, $cid, $bid, $docount);
+        if ($chckOrdvQuo == 'fail') {
+            throw new Exception('Cannot continue Comparing Orderlist and Quotation, Skipping this data.');
+        }
+
+        //Comparing Orderlist VS Customer_Payment
+        $chckOrdvCusPay = compareOrderlistWithCustomerPayment($period, $quono, $cid, $bid, $docount, $invcotype, $invno);
+        if ($chckOrdvCusPay == 'fail') {
+            throw new Exception('Cannot continue Comparing Orderlist and Customer Payment, Skipping this data.');
+        }
         # $checkquotabResult = isExistQuotable($cid, $bid, $quono,$docount);// is the quotation table exist?
         # if $checkquotabResult is true response the result is ok,then go to next step
         # else if $checkquotabResult is false response the result, an dgo to next step
