@@ -29,6 +29,22 @@ function get_QuotationRecord($quotab, $quono, $cid, $bid) {
     return $result;
 }
 
+function get_QuotationRecordByQID($quotab, $quono, $cid, $bid, $qid) {
+    $tab = $quotab;
+    $qr = "SELECT * FROM $tab WHERE quono = '$quono' AND cid = '$cid' AND bid = '$bid' AND qid = $qid";
+    $objSQL = new SQL($qr);
+    $result = $objSQL->getResultOneRowArray();
+    return $result;
+}
+
+function get_OrderlistRecordByDOCount($ordtab, $quono, $cid, $bid, $docount) {
+    $tab = $ordtab;
+    $qr = "SELECT * FROM $tab WHERE quono = '$quono' AND cid = '$cid' AND bid = '$bid' AND docount = $docount";
+    $objSQL = new SQL($qr);
+    $result = $objSQL->getResultRowArray();
+    return $result;
+}
+
 function compareOrderlistWithSchedulingData($period, $quono, $cid, $bid) {
     echo "<div class='border border-primary'>";
     echo "====Begin comparing data between Orderlist and Scheduling====<br>";
@@ -62,33 +78,50 @@ function compareOrderlistWithSchedulingData($period, $quono, $cid, $bid) {
         $numrow = $ordnumrow;
         $topcount = $numrow - 1; //Maximum records, for loop requirement
         for ($i = 0; $i <= $topcount; $i++) {
-            echo "Row No.$i<br>";
-            $orddatarow = $orddataset[$i];
-            $schdatarow = $schdataset[$i];
-            $notmatch = 0;
-            echo "<table class=' table-sm table-bordered'>";
-            echo "<tr><th>Column Name</th><th>$ordtab</th><th>$schtab</th>";
-            foreach ($orddatarow as $key => $val) {
-                if ($orddatarow["$key"] != $schdatarow["$key"]) {
-                    $bg = "class='bg-danger'";
-                    $notmatch++;
-                } else {
-                    $bg = "";
+            echo "<table class='table table-sm table-responsive'>";
+                echo "<tr>"
+                . "<th>Table Name</th>";
+                foreach ($orddataset[0] as $index => $val) {
+                    echo "<th>$index</th>";
                 }
-                echo "<tr $bg>";
-                echo "<th>$key</th>";
-                echo "<td>{$orddatarow["$key"]}</td>";
-                echo "<td>{$orddatarow["$key"]}</td>";
                 echo "</tr>";
-            }
-            echo "</table>";
-            if ($notmatch == 0) {
-                echo "All Record matches<br>";
-            } else {
-                throw new Exception("Record not matching in row no.$i");
-            }
-            echo "<br>";
+                echo "<tr>";
+                echo "<td>$ordtab</td>";
+                foreach ($orddataset[$i] as $index => $val) {
+                    if ($schdataset[$i][$index] != $orddataset[$i][$index]) {
+                        $bg = 'class="bg-danger"';
+                    } else {
+                        $bg = 'class="bg-warning"';
+                    }
+                    echo "<td $bg>$val</td>";
+                }
+                echo "</tr>";
+                echo "<tr>";
+                echo "<td>$schtab</td>";
+                foreach ($schdataset[$i] as $index => $val) {
+                    if ($schdataset[$i][$index] != $orddataset[$i][$index]) {
+                        $bg = 'class="bg-danger"';
+                        $notmatchArr[]['index'] = $index;
+                        $notmatchArr[]['no'] = $i;
+                    } else {
+                        $bg = 'class="bg-warning"';
+                    }
+                    echo "<td $bg>$val</td>";
+                }
+                echo "</tr>";
+                echo "</table>";
         }
+        echo "<b>";
+            if (!empty($notmatchArr)) {
+                foreach ($notmatchArr as $datalist) {
+                    $idx = $datalist['index'];
+                    $nom = $datalist['no'];
+                    echo "$val is not the same, [ ".$schtab = $schdataset[$nom][$idx]." | $ordtab = ".$orddataset[$nom][$idx]." ]<br>";
+                }
+            } else {
+                echo "ALL RECORD MATCHES<br>";
+            }
+            echo "</b>";
     }
 
     echo "====End comparing data between Orderlist and Scheduling====<br>";
@@ -201,21 +234,43 @@ function compareOrderlistWithCustomerPayment($period, $quono, $cid, $bid, $docou
         $orddiscount = 0;
         $ordgst = 0;
         $ordtotamount = 0;
+        echo "<div class='container bg-primary'>";
         foreach ($orddataset as $orddatarow) {
+            echo "Calculating item position " . $orddatarow['noposition'] . ".<br>";
+            echo "amountmat = " . $orddatarow['amountmat'] . " | ";
+            echo "amountpmach = " . $orddatarow['amountpmach'] . " | ";
+            echo "amountcncmach = " . $orddatarow['amountcncmach'] . " | ";
+            echo "amountother = " . $orddatarow['amountother'] . "<br> ";
             $amount = (float) $orddatarow['amountmat'] + (float) $orddatarow['amountpmach'] + (float) $orddatarow['amountcncmach'] + (float) $orddatarow['amountother'];
+            echo "Amount = $amount<br>";
+
+            echo "discountmat = " . $orddatarow['discountmat'] . " | ";
+            echo "discountpmach = " . $orddatarow['discountpmach'] . " | ";
+            echo "discountcncmach = " . $orddatarow['discountcncmach'] . " | ";
+            echo "discountother = " . $orddatarow['discountother'] . "<br> ";
             $discount = (float) $orddatarow['discountmat'] + (float) $orddatarow['discountpmach'] + (float) $orddatarow['discountcncmach'] + (float) $orddatarow['discountother'];
+            echo "Discount = $discount <br>";
+
+            echo "gstmat = " . $orddatarow['gstmat'] . " | ";
+            echo "gstpmach = " . $orddatarow['gstpmach'] . " | ";
+            echo "gstcncmach = " . $orddatarow['gstcncmach'] . " | ";
+            echo "gstother = " . $orddatarow['gstother'] . "<br> ";
             $gst = (float) $orddatarow['gstmat'] + (float) $orddatarow['gstpmach'] + (float) $orddatarow['gstcncmach'] + (float) $orddatarow['gstother'];
+            echo "GST = $gst<br>";
+
             $totamount = $amount - $discount + $gst;
             $ordamount += $amount;
             $orddiscount += $discount;
             $ordgst += $gst;
             $ordtotamount += $totamount;
+            echo "Total amount for item position " . $orddatarow['noposition'] . ".<br>";
             unset($amount);
             unset($discount);
             unset($gst);
             unset($totamount);
+            echo "============<br>";
         }
-        echo "<div class='container bg-primary'>";
+        echo "=+=+=++=+=+=+=+=+=+=+=+=+=+=+=+=+=+<br>";
         echo "Total : " . number_format($ordamount, 2) . "<br>";
         echo "Discount : " . number_format($orddiscount, 2) . " <br>";
         echo "GST : " . number_format($ordgst, 2) . " <br>";
@@ -236,7 +291,7 @@ function compareOrderlistWithCustomerPayment($period, $quono, $cid, $bid, $docou
         echo "GST : " . number_format($invgst, 2) . "<br>";
         echo "Grand Total: " . number_format(($invtotamount), 2) . "<br>";
         echo "</div>";
-        if (number_format($invtotamount,2) != number_format($ordtotamount,2)) {
+        if (number_format($invtotamount, 2) != number_format($ordtotamount, 2)) {
             echo "<p class='bg-danger'>TOTAL AMOUNT IN $ordtab v $cusptab DOESN'T MATCH</p><br>";
         } else {
             echo "<p class='bg-success'>TOTAL AMOUNT IN $ordtab v $cusptab MATCHES</p><br>";
@@ -287,6 +342,8 @@ foreach ($result1 as $array) {
         $ql_dataset = get_QuonoListRecord($quono, $cid, $bid);
         if (empty($ql_dataset)) {
             Throw new Exception("Cannot find any record in quono_list");
+        } else {
+            echo "FOUND RECORD IN quono_list =====<br>";
         }
         $quotab = $ql_dataset['quotab'];
         //check table exist or not
@@ -297,45 +354,47 @@ foreach ($result1 as $array) {
         $quodataset = get_QuotationRecord($quotab, $quono, $cid, $bid);
         if (empty($quodataset)) {
             Throw new Exception("Cannot find any record in $quotab");
+        } else {
+            echo "FOUND RECORD IN $quotab =====<br>";
         }
         $quodtnumrow = count($quodataset);
         echo "Detected $quodtnumrow items in Quono [$quono]<br>";
         $odissuecnt = 0;
         ?>
-        <div>
-            <table class="table table-sm table-responsive">
-                <thead>
-                    <tr>
-                        <?php
-                        foreach ($quodataset[0] as $index => $val) {
-                            echo "<th>$index</th>";
-                        }
-                        ?>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    foreach ($quodataset as $datarow) {
-                        if ($datarow['odissue'] != 'yes') {
-                            $bg_q = 'class="bg-danger"';
-                        } else {
-                            $bg_q = 'class="bg-primary"';
-                        }
-                        echo "<tr $bg_q>";
-                        foreach ($datarow as $index => $val) {
-                            echo "<th>$val</th>";
-                            if ($index == 'odissue') {
-                                if ($val == 'yes') {
-                                    $odissuecnt++;
-                                }
-                            }
-                        }
-                        echo "</tr>";
+        <!--        <div>
+                    <table class="table table-sm table-responsive">
+                        <thead>
+                            <tr>
+        <?php
+//                        foreach ($quodataset[0] as $index => $val) {
+//                            echo "<th>$index</th>";
+//                        }
+        ?>
+                            </tr>
+                        </thead>
+                        <tbody>
+        <?php
+        foreach ($quodataset as $datarow) {
+//                        if ($datarow['odissue'] != 'yes') {
+//                            $bg_q = 'class="bg-danger"';
+//                        } else {
+//                            $bg_q = 'class="bg-primary"';
+//                        }
+//                        echo "<tr $bg_q>";
+            foreach ($datarow as $index => $val) {
+//                            echo "<th>$val</th>";
+                if ($index == 'odissue') {
+                    if ($val == 'yes') {
+                        $odissuecnt++;
                     }
-                    ?>
-                </tbody>
-            </table>
-        </div>
+                }
+            }
+//                        echo "</tr>";
+        }
+        ?>
+                        </tbody>
+                    </table>
+                </div>-->
         <?php
         if ($odissuecnt == 0) {
             unset($odissuecnt);
@@ -343,7 +402,43 @@ foreach ($result1 as $array) {
         }
         echo "$odissuecnt of $quodtnumrow items has been issued into orderlist<br>";
         unset($odissuecnt);
-
+        echo "<div class='border border-info'>";
+        echo "DO COUNT = $docount <br>";
+        echo "Show Quotation record based of DO COUNT<br>";
+        $orddataset = get_OrderlistRecordByDOCount($ordtab, $quono, $cid, $bid, $docount);
+        $qidarr = array();
+        foreach ($orddataset as $datarow) {
+            $qidarr[] = $datarow['qid'];
+        }
+        ?>
+        <table class="table table-sm table-responsive bg-primary">
+            <?php
+            $qcnt = 0;
+            foreach ($qidarr as $qidval) {
+                $qcnt++;
+                $quodatarow_dtl = get_QuotationRecordByQID($quotab, $quono, $cid, $bid, $qidval);
+                if ($qcnt == 1) {
+                    echo "<tr>";
+                    foreach ($quodatarow_dtl as $index => $val) {
+                        echo "<th>$index</th>";
+                    }
+                    echo "</tr>";
+                }
+                echo "<tr>";
+                foreach ($quodatarow_dtl as $index => $val) {
+                    echo "<th>$val</th>";
+                    if ($index == 'odissue') {
+                        if ($val == 'yes') {
+                            
+                        }
+                    }
+                }
+                echo "</tr>";
+            }
+            ?>
+        </table>
+        <?php
+        echo "</div><br>";
         //Comparing Orderlist record with QUotation Record
         $chckOrdvQuo = compareOrderlistWithQuotation($period, $quoperiod, $quono, $cid, $bid, $docount);
         if ($chckOrdvQuo == 'fail') {
