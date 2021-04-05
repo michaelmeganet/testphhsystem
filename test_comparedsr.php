@@ -13,17 +13,18 @@
             <div class="page-header" id="banner">
                 <div class="row">
                     <div class="col-lg-12 col-md-9 col-sm-8">
-                        <h1>SALES PRICE COMPARISON</h1>
+                        <h1>COMPARE DSR LEGACY v NEW FUNCTION</h1>
                         <br>
                         <br>
-                        <a href='./test_dsr/generate_dsr_table.php' target="_blank">Generate Daily Sales Table by Month</a>
-                        <br>
-                        <a href='./test_comparedsr.php' target="_parent">Compare between legacy method vs new function method </a>
-
                     </div>
                     <br>
 
                 </div>
+                <div class='row'>
+                    <?php include_once "./test_dsr/compare_dsr.php"; ?>
+                    <br>
+
+                </div>            
             </div>
 
 

@@ -1,10 +1,33 @@
 <?php
 include_once 'salesreport.axios.php';
+include_once './../class/dbh.inc.php';
+include_once './../class/variables.inc.php';
+include_once './../class/phhdate.inc.php';
+include_once './salesreport.func.php';
 /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
+$periodList = getPeriod();
+?>
+
+<h3>Generate Table for Daily Sales Report by Month</h3>
+<br>
+<form action='' target="_parent" method="POST">
+    <label>Select Period</label>
+    <br>
+    <select name='period' id='period' >
+        <?php
+        foreach ($periodList as $period) {
+            echo "<option value='$period'>$period</option>";
+        }
+        ?>
+    </select>
+    <input type='submit' value='Submit' />
+</form>
+<?php
+
 if (isset($_POST['period'])) {
     $period = $_POST['period'];
     $aid = 'all';
@@ -103,25 +126,22 @@ if (isset($_POST['period'])) {
         </tbody>
     </table>
     <?php
+    echo"<br><br>";
+    echo "BEGIN INSERTING RECORD INTO TABLE.....<br>";
+    $tab = "testdailyreport_$period";
+    echo "===Checking Table===<br>";
+    generate_test_dailyReportTable($tab);
+    echo "===End Check table===<br><br>";
+    echo "===Inserting into Table===<br>";
+    $cnti =0;
+    foreach ($dsr_record as $dsr_datarow){
+        $insresult = insert_test_dailyReportTable($tab, $dsr_datarow);
+        echo "$cnti = insert $insresult;<br>";
+        $cnti++;
+    }
 }
 
 
 
-$periodList = getPeriod();
 ?>
-
-<h3>Generate Table for Daily Sales Report by Month</h3>
-<br>
-<form action='' target="_parent" method="POST">
-    <label>Select Period</label>
-    <br>
-    <select name='period' id='period' >
-        <?php
-        foreach ($periodList as $period) {
-            echo "<option value='$period'>$period</option>";
-        }
-        ?>
-    </select>
-    <input type='submit' value='Submit' />
-</form>
 

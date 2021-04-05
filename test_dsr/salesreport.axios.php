@@ -1,9 +1,5 @@
 <?php
 
-include_once './../class/dbh.inc.php';
-include_once './../class/variables.inc.php';
-include_once './../class/phhdate.inc.php';
-include_once './salesreport.func.php';
 
 function getPeriod() {
     $objDate = new DateNow();
@@ -190,7 +186,7 @@ function get_PriceByDateQuonoAid($DSRDetails_dataset) {
     echo "\$amountsubtotalother = $amountsubtotalother<br>";
     $totalamount = ($amountsubtotalmat + $amountsubtotalpmach + $amountsubtotalcncmach + $amountsubtotalother);
     echo "<b>\$totalamount = $totalamount<br></b>";
-    
+
     $priceList = array(
         'amountmat' => $amountmat,
         'discountmat' => $discountmat,
@@ -210,6 +206,81 @@ function get_PriceByDateQuonoAid($DSRDetails_dataset) {
         'amountsubtotalother' => $amountsubtotalother,
         'totalamount' => $totalamount
     );
-    
+
     return $priceList;
+}
+
+function insert_test_dailyReportTable($tab, $datarow) {
+    $qr = "INSERT INTO $tab SET ";
+    $arrCount = count($datarow);
+    $cnt = 0;
+    foreach ($datarow as $key => $val) {
+        $cnt ++;
+        $qr .= " $key =:$key ";
+        if ($cnt != $arrCount) {
+            $qr .= " , ";
+        }
+    }
+    $objSQL = new SQLBINDPARAM($qr, $datarow);
+    $insResult = $objSQL->InsertData2();
+    if ($insResult == 'insert ok!'){
+        return 'ok';
+    }else{
+        return 'fail';
+    }
+    
+}
+
+function generate_test_dailyReportTable($tab) {
+    $chkTab = checkTableExists($tab);
+    if ($chkTab == 'YES') {
+        echo "$tab already exists. Truncating previous table first....<br>";
+        $qrTrunc = "TRUNCATE TABLE $tab";
+        $objSQLTrunc = new SQL($qrTrunc);
+        $result = $objSQLTrunc->ExecuteQuery();
+        if ($result == 'execute ok!') {
+            echo "Successfully emptied old records in $tab<br>";
+        } else {
+            echo "Failed to empty $tab.<br>";
+            exit();
+        }
+    } else {
+        echo "$tab cannot be found. Creating the table....<br>";
+        $qrCRTable = "CREATE TABLE `$tab` (
+                        `dsrid` INT NOT NULL AUTO_INCREMENT,
+                        `date` DATE NOT NULL,
+                        `quono` VARCHAR(50) NOT NULL,
+                        `aid_cus` INT(10) NOT NULL DEFAULT 0,
+                        `salesperson` VARCHAR(50) NOT NULL,
+                        `currency` INT(2) NOT NULL DEFAULT 0,
+                        `amountmat` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `discountmat` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `gstmat` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `amountsubtotalmat` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `amountpmach` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `discountpmach` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `gstpmach` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `amountsubtotalpmach` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `amountcncmach` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `discountcncmach` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `gstcncmach` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `amountsubtotalcncmach` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `amountother` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `discountother` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `gstother` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `amountsubtotalother` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        `totalamount` FLOAT(20,2) NOT NULL DEFAULT 0,
+                        INDEX `dsrid` (`dsrid`)
+                )
+                COLLATE='utf8mb4_general_ci'
+                ;
+                ";
+        $objSQLCRTab = new SQL($qrCRTable);
+        $result = $objSQLCRTab->ExecuteQuery();
+        if ($result == 'execute ok!') {
+            echo "Successfully created $tab...<br>";
+        } else {
+            echo "Failed creating $tab....<br>";
+        }
+    }
 }
